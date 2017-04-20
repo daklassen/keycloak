@@ -82,7 +82,7 @@ public abstract class AbstractAdapterTest extends AbstractAuthTest {
     // TODO: Fix to not require re-import
     @Override
     protected boolean isImportAfterEachMethod() {
-        return true;
+        return false;
     }
 
     private void modifyClientJWKSUrl(RealmRepresentation realm, String regex, String replacement) {

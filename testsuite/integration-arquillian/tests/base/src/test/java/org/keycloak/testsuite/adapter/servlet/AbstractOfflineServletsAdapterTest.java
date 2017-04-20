@@ -3,6 +3,7 @@ package org.keycloak.testsuite.adapter.servlet;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.graphene.page.Page;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -60,10 +61,17 @@ public abstract class AbstractOfflineServletsAdapterTest extends AbstractServlet
         testRealmLoginPage.setAuthRealm(TEST);
     }
 
-
     @Override
     public void addAdapterTestRealms(List<RealmRepresentation> testRealms) {
         testRealms.add(loadRealm("/adapter-test/offline-client/offlinerealm.json"));
+    }
+
+    @After
+    public void logout() {
+        //This was necessary to be introduced, otherwise other testcases will fail
+        offlineTokenPage.logout();
+        assertCurrentUrlDoesntStartWith(offlineTokenPage);
+        loginPage.assertCurrent();
     }
 
     @Test
@@ -79,8 +87,8 @@ public abstract class AbstractOfflineServletsAdapterTest extends AbstractServlet
 
         assertCurrentUrlStartsWith(offlineTokenPage);
 
-        Assert.assertEquals(offlineTokenPage.getRefreshToken().getType(), TokenUtil.TOKEN_TYPE_OFFLINE);
-        Assert.assertEquals(offlineTokenPage.getRefreshToken().getExpiration(), 0);
+        Assert.assertEquals(TokenUtil.TOKEN_TYPE_OFFLINE, offlineTokenPage.getRefreshToken().getType());
+        Assert.assertEquals(0, offlineTokenPage.getRefreshToken().getExpiration());
 
         String accessTokenId = offlineTokenPage.getAccessToken().getId();
         String refreshTokenId = offlineTokenPage.getRefreshToken().getId();
@@ -90,14 +98,6 @@ public abstract class AbstractOfflineServletsAdapterTest extends AbstractServlet
         assertCurrentUrlStartsWith(offlineTokenPage);
         Assert.assertNotEquals(offlineTokenPage.getRefreshToken().getId(), refreshTokenId);
         Assert.assertNotEquals(offlineTokenPage.getAccessToken().getId(), accessTokenId);
-
-        // Ensure that logout works for webapp (even if offline token will be still valid in Keycloak DB)
-        offlineTokenPage.logout();
-        assertCurrentUrlDoesntStartWith(offlineTokenPage);
-        loginPage.assertCurrent();
-        offlineTokenPage.navigateTo();
-        assertCurrentUrlDoesntStartWith(offlineTokenPage);
-        loginPage.assertCurrent();
 
         setAdapterAndServerTimeOffset(0);
         events.clear();
@@ -177,11 +177,6 @@ public abstract class AbstractOfflineServletsAdapterTest extends AbstractServlet
         AccountApplicationsPage.AppEntry offlineClient = accountAppPage.getApplications().get("offline-client");
         Assert.assertTrue(offlineClient.getRolesGranted().contains("Offline access"));
         Assert.assertTrue(offlineClient.getAdditionalGrants().contains("Offline Token"));
-
-        //This was necessary to be introduced, otherwise other testcases will fail
-        offlineTokenPage.logout();
-        assertCurrentUrlDoesntStartWith(offlineTokenPage);
-        loginPage.assertCurrent();
 
         events.clear();
 

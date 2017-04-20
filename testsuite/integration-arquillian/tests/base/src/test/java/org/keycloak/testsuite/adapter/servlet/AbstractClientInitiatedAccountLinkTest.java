@@ -22,6 +22,7 @@ import org.jboss.arquillian.graphene.page.Page;
 import org.jboss.arquillian.test.api.ArquillianResource;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
 import org.junit.Assert;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.keycloak.OAuth2Constants;
@@ -165,7 +166,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
     public void addChildUser() {
         RealmResource realm = adminClient.realms().realm(CHILD_IDP);
         UserRepresentation user = new UserRepresentation();
-        user.setUsername("child");
+        user.setUsername(CHILD_IDP);
         user.setEnabled(true);
         childUserId = createUserAndResetPasswordWithAdminClient(realm, user, "password");
 
@@ -181,6 +182,18 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
         roles.add(role);
         realm.users().get(childUserId).roles().clientLevel(brokerService.getId()).add(roles);
 
+    }
+
+    @After
+    public void removeChildUser() {
+        // reset addChildUser() changes
+        RealmResource childRealm = adminClient.realms().realm(CHILD_IDP);
+        childRealm.roles().get("user").remove();
+        ApiUtil.removeUserByUsername(childRealm, CHILD_IDP);
+
+        // reset addIdpUser() changes
+        RealmResource parentRealm = adminClient.realms().realm(PARENT_IDP);
+        ApiUtil.removeUserByUsername(parentRealm, PARENT_USERNAME);
     }
 
     @Before
@@ -225,7 +238,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo(linkUrl);
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
 
         Assert.assertTrue(driver.getCurrentUrl().contains("link_error=not_logged_in"));
 
@@ -235,7 +248,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo( appPage.getInjectedUrl() + "/hello");
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
         Assert.assertTrue(driver.getCurrentUrl().startsWith(appPage.getInjectedUrl() + "/hello"));
         Assert.assertTrue(driver.getPageSource().contains("Unknown request:"));
 
@@ -264,7 +277,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo( appPage.getInjectedUrl() + "/hello");
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
         Assert.assertTrue(driver.getCurrentUrl().startsWith(appPage.getInjectedUrl() + "/hello"));
         Assert.assertTrue(driver.getPageSource().contains("Unknown request:"));
 
@@ -294,7 +307,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo(clientLinkUrl);
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
         Assert.assertTrue(loginPage.isCurrent(PARENT_IDP));
         loginPage.login(PARENT_USERNAME, "password");
 
@@ -314,7 +327,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo(clientLinkUrl);
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
 
         Assert.assertTrue(driver.getCurrentUrl().contains("link_error=not_allowed"));
 
@@ -332,7 +345,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo(clientLinkUrl);
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
         Assert.assertTrue(loginPage.isCurrent(PARENT_IDP));
         loginPage.login(PARENT_USERNAME, "password");
 
@@ -352,7 +365,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
 
         navigateTo(clientLinkUrl);
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
 
         Assert.assertTrue(driver.getCurrentUrl().contains("link_error=not_allowed"));
 
@@ -391,7 +404,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
         navigateTo(linkUrl);
         Assert.assertTrue(loginPage.isCurrent(CHILD_IDP));
         Assert.assertTrue(driver.getPageSource().contains(PARENT_IDP));
-        loginPage.login("child", "password");
+        loginPage.login(CHILD_IDP, "password");
         Assert.assertTrue(loginPage.isCurrent(PARENT_IDP));
         loginPage.login(PARENT_USERNAME, "password");
         System.out.println("After linking: " + driver.getCurrentUrl());
@@ -399,7 +412,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
         Assert.assertTrue(driver.getCurrentUrl().startsWith(linkBuilder.toTemplate()));
         Assert.assertTrue(driver.getPageSource().contains("Account Linked"));
 
-        OAuthClient.AccessTokenResponse response = oauth.doGrantAccessTokenRequest(CHILD_IDP, "child", "password", null, "client-linking", "password");
+        OAuthClient.AccessTokenResponse response = oauth.doGrantAccessTokenRequest(CHILD_IDP, CHILD_IDP, "password", null, "client-linking", "password");
         Assert.assertNotNull(response.getAccessToken());
         Assert.assertNull(response.getError());
         Client httpClient = ClientBuilder.newClient();
@@ -473,7 +486,7 @@ public abstract class AbstractClientInitiatedAccountLinkTest extends AbstractSer
             Assert.assertFalse(driver.getPageSource().contains(PARENT_IDP));
 
             // now test that we can still link.
-            loginPage.login("child", "password");
+            loginPage.login(CHILD_IDP, "password");
             Assert.assertTrue(loginPage.isCurrent(PARENT_IDP));
             loginPage.login(PARENT_USERNAME, "password");
             System.out.println("After linking: " + driver.getCurrentUrl());
